@@ -1,0 +1,63 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    - cron: '0 * * * *' # hourly
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/router-for-me/CLIProxyAPI.git || true
+          git fetch upstream --depth=1
+
+      - name: Compare upstream and origin
+        id: compare
+        run: |
+          UPSTREAM_SHA=$(git rev-parse upstream/main)
+          ORIGIN_SHA=$(git rev-parse origin/main || true)
+          echo "upstream=$UPSTREAM_SHA" >> $GITHUB_OUTPUT
+          echo "origin=$ORIGIN_SHA" >> $GITHUB_OUTPUT
+          if [ "$UPSTREAM_SHA" = "$ORIGIN_SHA" ]; then
+            echo "no_change=true" >> $GITHUB_OUTPUT
+          else
+            echo "no_change=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Nothing to do
+        if: steps.compare.outputs.no_change == 'true'
+        run: echo "Upstream and origin are identical; no sync required."
+
+      - name: Create sync branch from upstream
+        if: steps.compare.outputs.no_change == 'false'
+        run: |
+          BRANCH=upstream-sync-${{ github.run_id }}
+          git checkout -b "$BRANCH"
+          git reset --hard upstream/main
+          git push -u origin HEAD --force
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        if: steps.compare.outputs.no_change == 'false'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.compare.outputs.branch || format('upstream-sync-%d', github.run_id) }}
+          base: main
+          title: "Sync from upstream: ${{ steps.compare.outputs.upstream }}"
+          body: |
+            Automated sync from upstream repository `router-for-me/CLIProxyAPI`.
+            If everything looks good, merge this PR to bring the fork up to date.
+          labels: upstream-sync

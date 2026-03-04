@@ -118,12 +118,34 @@ server:
 # Add your provider configurations here
 ```
 
-### Update to Latest Version
+### Updating to Latest Version
+
+You can upgrade the running server either via Docker Compose (as shown below)
+or by using the included helper script that downloads the latest release from
+GitHub and replaces the current binary.
+
+**Docker Compose:**
 
 ```bash
 cd ~/cli-proxy
 docker compose pull && docker compose up -d
 ```
+
+**Scripted (binary) update:**
+
+```bash
+# clone or cd into your installation directory, e.g. ~/cli-proxy
+# make sure the service is running and you know your management key
+
+# run the updater shipped with the repository
+./scripts/update.sh
+```
+
+The updater performs a usage export, stops the process, downloads the newest
+`cli-proxy-api-plus` release for your platform, restarts the service, and
+imports usage state back.  Review and adjust the variables in
+`scripts/update.sh` if you installed into a different directory or use a
+different management key.
 
 ## Contributing
 

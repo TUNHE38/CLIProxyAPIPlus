@@ -30,6 +30,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v6/internal/tui"
 	"github.com/router-for-me/CLIProxyAPI/v6/internal/usage"
 	"github.com/router-for-me/CLIProxyAPI/v6/internal/util"
+	"github.com/router-for-me/CLIProxyAPI/v6/internal/updater"
 	sdkAuth "github.com/router-for-me/CLIProxyAPI/v6/sdk/auth"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v6/sdk/cliproxy/auth"
 	log "github.com/sirupsen/logrus"
@@ -100,6 +101,7 @@ func main() {
 	var standalone bool
 	var noIncognito bool
 	var useIncognito bool
+	var selfUpdate bool
 
 	// Define command-line flags for different operation modes.
 	flag.BoolVar(&login, "login", false, "Login Google Account")
@@ -132,6 +134,7 @@ func main() {
 	flag.StringVar(&password, "password", "", "")
 	flag.BoolVar(&tuiMode, "tui", false, "Start with terminal management UI")
 	flag.BoolVar(&standalone, "standalone", false, "In TUI mode, start an embedded local server")
+	flag.BoolVar(&selfUpdate, "update", false, "Check GitHub for a new release, download it and replace the running binary")
 
 	flag.CommandLine.Usage = func() {
 		out := flag.CommandLine.Output()
@@ -162,6 +165,22 @@ func main() {
 
 	// Parse the command-line flags.
 	flag.Parse()
+
+	// perform a self-update and exit early if requested
+	if selfUpdate {
+		if err := updater.SelfUpdate("router-for-me", "CLIProxyAPIPlus"); err != nil {
+			log.Fatalf("self-update failed: %v", err)
+		}
+		return
+	}
+
+	// software update requested? perform early and exit.
+	if selfUpdate {
+		if err := updater.SelfUpdate("router-for-me", "CLIProxyAPIPlus"); err != nil {
+			log.Fatalf("self-update failed: %v", err)
+		}
+		return
+	}
 
 	// Core application variables.
 	var err error
